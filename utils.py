@@ -13,8 +13,7 @@ from glob import glob
 import os
 #import matplotlib.pyplot as plt
 from time import gmtime, strftime
-#from config import FACE_ALIGNMENT_RECROP_DIR, DATA_DIR
-
+from config import _300W_LP_DIR
 
 pp = pprint.PrettyPrinter()
 
@@ -257,3 +256,49 @@ def visualize(sess, dcgan, config, option):
     new_image_set = [merge(np.array([images[idx] for images in image_set]), [10, 10]) \
         for idx in range(64) + range(63, -1, -1)]
     make_gif(new_image_set, './samples/test_gif_merged.gif', duration=8)
+
+
+
+def load_300W_LP_dataset(dataset):
+    print 'Loading ' + dataset +' ...'
+   
+    fd = open(_300W_LP_DIR+'/filelist/'+dataset+'_filelist.txt', 'r')
+    all_images = []
+    for line in fd:
+        all_images.append(line.strip())
+    fd.close()
+    print '    DONE. Finish loading ' + dataset +' with ' + str(len(all_images)) + ' images' 
+
+    fd = open(_300W_LP_DIR+'/filelist/'+dataset+'_param.dat')
+    all_paras = np.fromfile(file=fd, dtype=np.float32)
+    fd.close()
+
+    idDim = 1
+    mDim  = idDim + 8
+    poseDim = mDim + 7
+    shapeDim = poseDim + 199
+    expDim = shapeDim + 29
+    texDim = expDim + 40
+    ilDim  = texDim + 10
+    #colorDim  = ilDim + 7
+
+    all_paras = all_paras.reshape((-1,ilDim)).astype(np.float32)
+    pid = all_paras[:,0:idDim]
+    m = all_paras[:,idDim:mDim]
+    pose = all_paras[:,mDim:poseDim]
+    shape = all_paras[:,poseDim:shapeDim]
+    exp = all_paras[:,shapeDim:expDim]
+    tex = all_paras[:,expDim:texDim]
+    il  = all_paras[:,texDim:ilDim]
+    #color = all_paras[:,ilDim:colorDim]
+
+    assert (len(all_images) == all_paras.shape[0]),"Number of samples must be the same between images and paras"
+
+    return all_images, pid, m, pose, shape, exp, tex, il
+
+def image2texture_fn(image_fn):
+    last = image_fn[-7:].find('_')
+    if (last < 0):
+        return image_fn
+    else:
+        return image_fn[:-7 + last] + '_0.png'
